@@ -6,7 +6,6 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.bolnik.fooddelivery.entities.Role;
 import ru.bolnik.fooddelivery.entities.User;
 import ru.bolnik.fooddelivery.repositories.UserRepository;
-import ru.bolnik.fooddelivery.services.impl.IUserService;
 
 import java.util.Arrays;
 import java.util.HashSet;
