@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <title>Ooooops!</title>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css "/>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css ">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" type="text/css" th:href="@{/css/main.css}" href="/css/main.css"/>
+</head>
+<body class="bg-dark text-white">
+<header>
+    <nav class="navbar navbar-expand-lg navbar-light bg-dark">
+        <div class="col-4">
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item active">
+                        <a class="text-white nav-link" tabindex="-1" th:href="@{/login}">Log In</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-4">
+            <h1 class="text-white text-center">
+                <a class="main-logo-link text-white" th:href="@{/}">DFD</a>
+            </h1>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+        <div class="col-4 d-flex justify-content-end">
+            <form class="form-inline my-2 my-lg-0">
+                <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
+                <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+            </form>
+        </div>
+    </nav>
+</header>
+
+<main class="container py-5">
+    <div class="row">
+        <div class="col-md-2 text-center">
+            <p><i class="fa fa-exclamation-triangle fa-5x"></i><br/>Status Code: 403</p>
+        </div>
+        <div class="col-md-10">
+            <h3>Nothing to see here. Please disperse...</h3>
+            <img th:src="@{/images/forbidden.gif}" src="/images/forbidden.gif" class="img-fluid" alt="Access denied"/>
+        </div>
+    </div>
+</main>
+
+<!-- JS для Bootstrap -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js "></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js @1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js "></script>
+
+</body>
+</html>
