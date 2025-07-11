@@ -6,6 +6,7 @@ import ru.bolnik.fooddelivery.entities.Role;
 import ru.bolnik.fooddelivery.entities.User;
 import ru.bolnik.fooddelivery.services.UserService;
 
+import javax.annotation.PostConstruct;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +17,7 @@ public class DefaultDataConfig {
     @Autowired
     private UserService userService;
 
+    @PostConstruct
     private void createDefaultUsers() {
         List.of(
                 User.builder().username("john").password("123").build(),
