@@ -25,15 +25,15 @@ public class DefaultDataConfig {
         ).forEach(userService::createUser);
 
         userService.createUser(
-                User.builder().username("admin").password("admin").roles(new HashSet<>(Arrays.asList(Role.ROLE_ADMIN))).build()
+                User.builder().username("admin").password("admin").roles(new HashSet<>(Arrays.asList(Role.ADMIN))).build()
         );
 
         userService.createUser(
-                User.builder().username("moder").password("moder").roles(new HashSet<>(Arrays.asList(Role.ROLE_MODERATOR))).build()
+                User.builder().username("moder").password("moder").roles(new HashSet<>(Arrays.asList(Role.MODERATOR))).build()
         );
 
         userService.createUser(
-                User.builder().username("umoderator").password("12345").roles(new HashSet<>(Arrays.asList(Role.ROLE_ADMIN, Role.ROLE_MODERATOR))).build()
+                User.builder().username("umoderator").password("12345").roles(new HashSet<>(Arrays.asList(Role.ADMIN, Role.MODERATOR))).build()
         );
     }
 

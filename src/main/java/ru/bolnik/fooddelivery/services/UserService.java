@@ -26,7 +26,7 @@ public class UserService  {
     public void createUser(User user) {
 
         if (user.getRoles() == null) {
-            user.setRoles(new HashSet<>(Arrays.asList(Role.ROLE_USER)));
+            user.setRoles(new HashSet<>(Arrays.asList(Role.USER)));
         }
 
         userRepository.save(user);

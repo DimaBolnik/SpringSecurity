@@ -27,7 +27,7 @@ public class SecurityConfig {
                 .permitAll()
                 .and()
                 .logout()
-                .logoutSuccessUrl("/")
+                .logoutSuccessUrl("/login")
                 .permitAll()
                 .and()
                 .csrf().disable();
