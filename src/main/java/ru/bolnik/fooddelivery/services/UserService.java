@@ -1,45 +1,43 @@
 package ru.bolnik.fooddelivery.services;
 
-import org.springframework.beans.factory.annotation.Autowired;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.bolnik.fooddelivery.entities.Role;
-import ru.bolnik.fooddelivery.entities.User;
-import ru.bolnik.fooddelivery.repositories.UserRepository;
+import ru.bolnik.fooddelivery.model.User;
+import ru.bolnik.fooddelivery.repository.UserRepository;
 
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 
 @Service
-public class UserService  {
+@RequiredArgsConstructor
+public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Transactional
-    public boolean userExists(String username) {
-        return userRepository.findByUsername(username).isPresent();
-    }
-
-    @Transactional
-    public void createUser(User user) {
-
-        if (user.getRoles() == null) {
-            user.setRoles(new HashSet<>(Arrays.asList(Role.USER)));
-        }
-
-        userRepository.save(user);
-    }
-
-    @Transactional
-    public User get(Long id) {
-        return userRepository.findById(id).get();
-    }
-
-
-    @Transactional
-    public List<User> getList() {
+    @Transactional(readOnly = true)
+    public List<User> getAll() {
         return userRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public User getById(long userId) {
+        return userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("User does not exist"));
+    }
+
+    @Transactional
+    public User create(User user) {
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User update(User user) {
+        var userDataBase = userRepository.findById(user.getId())
+            .orElseThrow(() -> new IllegalArgumentException("User does not exist"));
+        userDataBase.setLogin(user.getLogin());
+        userDataBase.setPassword(user.getPassword());
+        userDataBase.setRoles(user.getRoles());
+        return userRepository.save(userDataBase);
     }
 }
