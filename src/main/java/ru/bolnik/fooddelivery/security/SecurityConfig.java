@@ -30,6 +30,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
+                .anonymous(anon -> anon
+                        .authorities("ROLE_ANON")
+                        .principal("myAnonUser"))
 //                .csrf(AbstractHttpConfigurer::disable)
                 .csrf(withDefaults())
                 .sessionManagement(withDefaults())
@@ -37,7 +40,8 @@ public class SecurityConfig {
                         authorize
                                 .requestMatchers("/login", "/deny.html", "/logout").permitAll()
                                 .requestMatchers("/company/**", "/user/**").authenticated()
-                                .requestMatchers("/info").permitAll()
+//                                .requestMatchers("/info").permitAll()
+                                .requestMatchers("/info").hasAuthority("ROLE_ANON")
                                 .requestMatchers("/**").denyAll()
                 )
                 .formLogin(fl ->
