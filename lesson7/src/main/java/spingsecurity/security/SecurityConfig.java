@@ -1,6 +1,8 @@
 package spingsecurity.security;
 
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -13,7 +15,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import javax.sql.DataSource;
 
@@ -21,11 +22,17 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final UserDetailsServiceImpl userDetailsService;
     private final DataSource dataSource;
+
+    @Value("${security.secretKey}")
+    private String secretKey;
+
+    @Value("${security.meCookieName}")
+    private String myCookieName;
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
@@ -50,11 +57,11 @@ public class SecurityConfig {
                 )
                 .rememberMe(
                         rm -> rm
-                                .key("my-secret")
+                                .key(secretKey)
 //                                .alwaysRemember(true)
 //                                .tokenValiditySeconds(3600)
-//                                .rememberMeCookieName("myCookieName")
-//                                .tokenRepository(persistentTokenRepository())
+                                .rememberMeCookieName(myCookieName)
+                                .tokenRepository(persistentTokenRepository())
                 )
                 .build();
     }
