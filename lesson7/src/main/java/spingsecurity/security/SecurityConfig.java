@@ -1,5 +1,6 @@
 package spingsecurity.security;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -7,13 +8,17 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final UserDetailsService userDetailsService;
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
@@ -38,7 +43,10 @@ public class SecurityConfig {
 //                                .requestMatchers("/**").denyAll() // по умолчанию все запрешено
                 )
                 // А данный метод включает дефолтные настройки HTTP Basic аутентификации
-                .httpBasic(withDefaults())
+//                .httpBasic(withDefaults())
+                .x509(x509 ->
+                        x509.userDetailsService(userDetailsService)
+                )
                 // Возвращает объект SecurityFilterChain
                 .build();
     }
