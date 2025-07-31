@@ -1,4 +1,4 @@
-package ru.javabegin.oauth2.backend.controller;
+package ru.bolnik.oauth2.backend.controller;
 
 import org.springframework.web.bind.annotation.*;
 

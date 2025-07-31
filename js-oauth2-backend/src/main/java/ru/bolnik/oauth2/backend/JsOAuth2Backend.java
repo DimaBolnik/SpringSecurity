@@ -1,4 +1,4 @@
-package ru.javabegin.oauth2.backend;
+package ru.bolnik.oauth2.backend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

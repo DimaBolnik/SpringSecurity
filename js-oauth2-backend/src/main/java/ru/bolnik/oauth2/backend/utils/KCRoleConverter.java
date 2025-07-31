@@ -1,4 +1,4 @@
-package ru.javabegin.oauth2.backend.utils;
+package ru.bolnik.oauth2.backend.utils;
 
 
 import org.springframework.core.convert.converter.Converter;
