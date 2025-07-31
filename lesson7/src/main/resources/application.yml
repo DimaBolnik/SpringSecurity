@@ -24,3 +24,6 @@ server:
     key-store-password: changeit
     protocol: TLS
     enabled-protocols: TLSv1.2
+    client-auth: need
+    trust-store: classpath:server/truststore.p12
+    trust-store-password: changeit

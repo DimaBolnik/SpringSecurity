@@ -64,4 +64,5 @@ public class SecurityConfig {
         authenticationProvider.setPasswordEncoder(new BCryptPasswordEncoder());
         return authenticationProvider;
     }
+
 }

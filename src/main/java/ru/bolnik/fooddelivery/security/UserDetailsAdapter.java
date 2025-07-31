@@ -1,6 +1,7 @@
 package ru.bolnik.fooddelivery.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,7 +11,7 @@ import java.util.Collection;
 import java.util.Locale;
 
 @RequiredArgsConstructor
-public class UserDetailsAdapter implements UserDetails {
+public class UserDetailsAdapter implements UserDetails, CredentialsContainer {
 
     private final User user;
 
@@ -49,5 +50,10 @@ public class UserDetailsAdapter implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+    @Override
+    public void eraseCredentials() {
+        user.setPassword(null);
     }
 }
