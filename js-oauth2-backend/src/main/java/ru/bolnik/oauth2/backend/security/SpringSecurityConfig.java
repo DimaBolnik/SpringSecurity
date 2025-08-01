@@ -15,6 +15,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import ru.bolnik.oauth2.backend.security.exception.OAuth2ExceptionHandler;
 import ru.bolnik.oauth2.backend.utils.KCRoleConverter;
 
 import java.util.Arrays;
@@ -57,7 +58,11 @@ public class SpringSecurityConfig {
 
                 .oauth2ResourceServer() // включаем защиту OAuth2 для данного backend
                 .jwt()
-                .jwtAuthenticationConverter(jwtAuthenticationConverter); // добавляем конвертер ролей из JWT в Authority (Role)
+                .jwtAuthenticationConverter(jwtAuthenticationConverter) // добавляем конвертер ролей из JWT в Authority (Role)
+
+                .and()
+
+                .authenticationEntryPoint(new OAuth2ExceptionHandler());
 
         return http.build();
     }
