@@ -2,6 +2,10 @@
 // В этом проекте мы все делаем вручную, чтобы вы лучше поняли весь алгоритм действий
 
 
+// ALG - используются как параметры в разных методах шифрования, где-то с тире, где-то без тире
+const SHA_256 = "SHA-256"
+
+
 // запускаем цикл действий для grant type = PKCE (Proof Key for Code Exchange), который хорошо подходит для JS приложений в браузере
 // https://www.rfc-editor.org/rfc/rfc7636
 function initValues() {
@@ -10,12 +14,22 @@ function initValues() {
     // защита от CSRF атак
     var state = generateState(30);
     document.getElementById("originalState").innerHTML = state;
-    // console.log("state = " + state)
+    console.log("state = " + state)
 
 
     var codeVerifier = generateCodeVerifier();
     document.getElementById("codeVerifier").innerHTML = codeVerifier;
-    // console.log("codeVerifier = " + codeVerifier);
+    console.log("codeVerifier = " + codeVerifier);
+
+    // реактивный код - реакция не выполнения асинхронной функции
+    generateCodeChallenge(codeVerifier).then(codeChallenge => {
+
+        console.log("codeChallenge = " + codeChallenge);
+
+        document.getElementById("codeChallenge").innerHTML = codeChallenge;
+
+
+    });
 
 }
 
@@ -25,6 +39,9 @@ function generateCodeVerifier() {
     var randomByteArray = new Uint8Array(43);
     window.crypto.getRandomValues(randomByteArray);
     return base64urlencode(randomByteArray); // формат Base64 на основе массива байтов
+
+    // про Uint8Array https://learn.javascript.ru/arraybuffer-binary-arrays
+
 }
 
 
@@ -51,4 +68,18 @@ function generateState(length) {
     }
 
     return state;
+}
+
+
+// https://www.rfc-editor.org/rfc/rfc7636.html#section-4.2
+// В реальных проектах эти функции скорее всего уже реализованы в библиотеке и вы просто вызывает эту функцию
+async function generateCodeChallenge(codeVerifier) {
+
+    var textEncoder = new TextEncoder('US-ASCII');
+    var encodedValue = textEncoder.encode(codeVerifier); // кодируем в массив байтов ранее полученный code_verifier
+    var digest = await window.crypto.subtle.digest(SHA_256, encodedValue);
+    // поддержка в браузерах функции шифрования https://developer.mozilla.org/en-US/docs/Web/API/Crypto/subtle
+
+    return base64urlencode(Array.from(new Uint8Array(digest)));  // Base64 формат на основе хеш-функции, которая применятся на codeVerifier
+
 }
