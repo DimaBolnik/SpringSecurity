@@ -2,7 +2,6 @@ package ru.bolnik.jsoauth2frontend.controller;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 
 @Controller
 public class RedirectController {
@@ -13,13 +12,4 @@ public class RedirectController {
         return "index";
     }
 
-    @GetMapping("/redirect")
-    public String redirect() {
-        return "redirect";
-    }
-
-    @PostMapping("/result")
-    public String result() {
-        return "index";
-    }
 }
