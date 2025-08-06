@@ -4,51 +4,48 @@
 // константы для использования во всем файле js
 const CLIENT_ID = "spring-backend"; // название должен совпадать c клиентом из KeyCloak
 const SCOPE = "openid"; // какие данные хотите получить помимо access token (refresh token, id token) - можно через пробел указывать неск значений
-const GRANT_TYPE_AUTH_CODE = "authorization_code"; // для получения access token мы отправляем auth code
-const GRANT_TYPE_REFRESH_TOKEN = "refresh_token"; // для обмена refresh token на новый access token
 const RESPONSE_TYPE_CODE = "code"; // для получения authorization code
-
-// ALG - используются как параметры в разных методах шифрования, где-то с тире, где-то без тире
-const SHA_256 = "SHA-256"
-const S256 = "S256";
 
 // !! в каждой версии KeyCloak могут меняться URI - поэтому нужно сверяться с документацией
 const KEYCLOAK_URI = "http://localhost:18080/realms/todoapp-realm/protocol/openid-connect"; // общий URI KeyCloak
 const CLIENT_ROOT_URL = "http://localhost:8080"; // куда auth server будет отправлять auth code
-const RESOURCE_SERVER_URL = "http://localhost:8901"; // где находится API Resource Server
-
+const BFF_URI = "http://localhost:8902/bff"
 // сохранение значений в память
 var accessToken = ""; // значение сбросится, если обновить веб страницу
-var refreshToken = ""; // для получения нового access token без повторной авторизации в окне
-var idToken = ""; // данные пользователя
+var refreshTokenCookieExists = ""; // для получения нового access token без повторной авторизации в окне
 
 // ключи для сохранения в localStorage
-const ID_TOKEN_KEY = "IT";
-const REFRESH_TOKEN_KEY = "RT";
+const USE_REFRESH_KEY = "USE_RT"; //
 const STATE_KEY = "ST";
-const CODE_VERIFIER_KEY = "CV";
 
 // вызывается при обновлении страницы
 function initPage() {
 
-    refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    // для корректной работы и сохранения куков
+    $.ajaxSetup({
+        crossDomain: true, // чтобы куки сохранялись для домена, независимо от порта
+        xhrFields: {
+            withCredentials: true // отправлять куки в запросах на BFF
+        }
+    });
 
-    // если есть сохраненный ранее Refresh Token, то меняем его на Access Token
-    if (refreshToken) {
-        exchangeRefreshToAccessToken();
-    } else { // иначе запускаем полный цикл PKCE с вводом логин-пароль
+    if (!checkAuthCode()) { // если текущий запрос - это не ответ от auth server с новым code (через redirect uri)
 
-        if (!checkAuthCode()) { // если текущий запрос - это не ответ от auth server с новым code (через redirect uri)
-            initAccessToken();  // значит уже авторизовались и просто получаем новые токены
+        // флаг true или false (не значение токена), был ли ранее сохранен кук с Refresh Token
+        // чтобы сэкономить время и не делать лишние запросы в BFF и KeyCloak и не обрабатывать ошибку
+        // само значение токена сохраняется в куке и отправляется на сервер автоматически
+        // флаг можено сохранять в localStorage, т.к. это не sensitive information
+        refreshTokenCookieExists = localStorage.getItem(USE_REFRESH_KEY);
 
-            // данные с сервера можем получать автоматически, как только получили новые токены!
+        if (refreshTokenCookieExists) {
+            exchangeRefreshToAccessToken(); // запрашиваем новый Access Token с помощью сохраненного ранее Refresh Token (в куке браузера)
+        } else {
+            initAccessToken(); // никакой из других вариантов не запустился - значит запускаем полный цикл получения токенов с вводом логин-пароль
         }
 
     }
 
-
 }
-
 
 
 // запускаем цикл действий для grant type = PKCE (Proof Key for Code Exchange), который хорошо подходит для JS приложений в браузере
@@ -57,23 +54,11 @@ function initAccessToken() {
     // нужен только для первого запроса (авторизация), чтобы клиент убедился, что ответ от AuthServer (после авторизации) пришел именно на его нужный запрос
     // защита от CSRF атак
     var state = generateState(30);
-    // document.getElementById("originalState").innerHTML = state;
     // console.log("state = " + state)
     localStorage.setItem(STATE_KEY, state);
 
-
-    var codeVerifier = generateCodeVerifier();
-    // document.getElementById("codeVerifier").innerHTML = codeVerifier;
-    localStorage.setItem(CODE_VERIFIER_KEY, codeVerifier);
-
-    // console.log("codeVerifier = " + codeVerifier);
-
-    // реактивный код - реакция не выполнения асинхронной функции
-    // асинхронный вызов - т.к. функция хеширования возвращает объект Promise, на который нужно подписываться (принцип реактивного кода)
-    generateCodeChallenge(codeVerifier).then(codeChallenge => {
-        // console.log("codeChallenge = " + codeChallenge);
-        requestAuthCode(state, codeChallenge) // запрашиваем auth code, т.к. все параметры сформировали и можем отправлять запрос
-    });
+    // запрашиваем auth code (вводим логин-пароль)
+    requestAuthCode(state);
 
 }
 
@@ -82,42 +67,30 @@ function initAccessToken() {
 // проверяем, если в текущем запросе есть параметры ответа от auth server - значит это ответ с новым auth code
 function checkAuthCode() {
     var urlParams = new URLSearchParams(window.location.search);
+
+    console.log(urlParams);
+
     var authCode = urlParams.get('code'),
         state = urlParams.get('state'),
         error = urlParams.get('error'),
         errorDescription = urlParams.get('error_description');
 
-    // если вдруг code не пришел в ответе
+    // если такого параметра нет
     if (!authCode) {
         return false;
     }
 
-    requestTokens(state, authCode) // получаем новые токены
+    // чтобы больше одного раза не исп этот параметр для страницы - мы его зануляем в истории запроса
+    urlParams.set('code', '');
+
+    // если пользователь обновит страницу, то браузер повторно отправит параметр code (и все остальные)
+    // поэтому нам нужно заменить историю, и тогда code занулится
+    history.replaceState(null, null, "?"+urlParams.toString());
+
+    sendCodeToBFF(state, authCode) // получаем новые токены
 
     return true;
 }
-
-// https://www.rfc-editor.org/rfc/rfc7636.html#page-8
-// в реальных проектах эти функции скорее всего уже реализованы в библиотеке и вы просто вызывает эту функцию
-function generateCodeVerifier() {
-    var randomByteArray = new Uint8Array(43);
-    window.crypto.getRandomValues(randomByteArray);
-    return base64urlencode(randomByteArray); // формат Base64 на основе массива байтов
-
-    // про Uint8Array https://learn.javascript.ru/arraybuffer-binary-arrays
-
-}
-
-
-// преобразование массива байтов в формат текстовый формат Base64
-// https://ru.wikipedia.org/wiki/Base64
-function base64urlencode(sourceValue) {
-    var stringValue = String.fromCharCode.apply(null, sourceValue);
-    var base64Encoded = btoa(stringValue);
-    var base64urlEncoded = base64Encoded.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-    return base64urlEncoded;
-}
-
 
 // зачем нужен state - чтобы на втором шаге будем сравнивать его со значением от AuthServer
 // тем самым убедимся, что ответ пришел именно на наш запрос
@@ -135,120 +108,65 @@ function generateState(length) {
 }
 
 
-// https://www.rfc-editor.org/rfc/rfc7636.html#section-4.2
-// В реальных проектах эти функции скорее всего уже реализованы в библиотеке и вы просто вызывает эту функцию
-async function generateCodeChallenge(codeVerifier) {
-
-    var textEncoder = new TextEncoder('US-ASCII');
-    var encodedValue = textEncoder.encode(codeVerifier); // кодируем в массив байтов ранее полученный code_verifier
-    var digest = await window.crypto.subtle.digest(SHA_256, encodedValue);
-    // поддержка в браузерах функции шифрования https://developer.mozilla.org/en-US/docs/Web/API/Crypto/subtle
-
-    return base64urlencode(Array.from(new Uint8Array(digest)));  // Base64 формат на основе хеш-функции, которая применятся на codeVerifier
-
-}
-
-
 // запрос в auth server на получение auth code (который потом будем менять на access token и другие токены)
-function requestAuthCode(state, codeChallenge) {
+// для BFF можно применять granttype = authorization code (вместо PKCE), т.к. токены теперь не будут храниться в браузере
+// поэтому параметры codeVerifier и codeChallenge не нужны
+function requestAuthCode(state) {
 
     // в каждой версии KeyCloak может изменяться URL - поэтому нужно сверяться с документацией
-    var authUrl = KEYCLOAK_URI + "/auth";
+    var authUrl = KEYCLOAK_URI + "/auth"; // здесь не исп BFF, а обращаемся напрямую
 
     authUrl += "?response_type=" + RESPONSE_TYPE_CODE; // указываем auth server, что хотим получить auth code
     authUrl += "&client_id=" + CLIENT_ID; // берем из auth server
     authUrl += "&state=" + state; // auth server сохранит это значение себе и отправит в след. запросе (вместе с access token) и клиент сможет убедиться, что ответ пришел именно на его запрос
     authUrl += "&scope=" + SCOPE; // какие данные хотите получить от auth server, помимо access token
-    authUrl += "&code_challenge=" + codeChallenge; // чтобы auth server убедился - запрос пришел именно то того пользователя, кто авторизовался ранее и получил auth code
-    authUrl += "&code_challenge_method=" + S256; // функция применяется к code_verifier, которые auth server получил в прошлом запросе - затем он сравнит результат с переданным code_challenge
     authUrl += "&redirect_uri=" + CLIENT_ROOT_URL; // куда auth server будет отправлять ответ
 
     window.open(authUrl, '_self'); // открываем в этом же окне (self) окно авторизации KeyCloak
 }
 
+// отправляем auth code в BFF, чтобы он получил все токены и сохранил их в куках
+function sendCodeToBFF(stateFromAuthServer, authCode) { // idea может показывать, что функция нидге не используется, но это не так, просто он не может определить вызов из другого window
 
-// получаем все токены из auth server (access token, refresh token, id token - зависит от настроек scope)
-function requestTokens(stateFromAuthServer, authCode) { // idea может показывать, что функция нидге не используется, но это не так, просто он не может определить вызов из другого window
-
-    // var originalState = document.getElementById("originalState").innerHTML;
     // console.log(authCode);
     var originalState = localStorage.getItem(STATE_KEY);
 
     // убеждаемся, что это ответ именно на наш запрос, который отправляли ранее (для авторизации на auth server)
     if (stateFromAuthServer === originalState) {
 
-        // передаем в auth server, чтобы он убедился, что мы - тот же клиент, который ранее делал запрос на получение auth code
-        var codeVerifier = localStorage.getItem(CODE_VERIFIER_KEY);
+        localStorage.removeItem(STATE_KEY);
 
-        // набор параметров для правильного обращения к auth server
-        var data = {
-            "grant_type": GRANT_TYPE_AUTH_CODE, // уведомляем auth server, что у нас есть auth code и с помощью него хотим получить access token
-            "client_id": CLIENT_ID, // берем из KeyCloak
-            "code": authCode, // полученное ранее значение (после авторизации в auth server)
-            "code_verifier": codeVerifier,// передаем в auth server, чтобы он убедился, что мы - тот же клиент, который ранее делал запрос на получение auth code
-            "redirect_uri": CLIENT_ROOT_URL // куда auth server будет отправлять ответ
-        };
-
-        $.ajax({ // ajax запрос для параллельного вызова
-            beforeSend: function (request) { // обязательные заголовки
-                request.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
+        // отправляем auth code в BFF, чтобы он получил все токены и сохранил их в куках
+        $.ajax({
+            type: "POST",
+            beforeSend: function (request) {
+                request.setRequestHeader("Content-type", "application/json; charset=UTF-8");
             },
-            type: "POST", // тип запроса обязательно должен быть POST
-            url: KEYCLOAK_URI + "/token", // адрес обращения
-            data: data, // параметры запроса
-            success: accessTokenResponse, // (callback) какой метод вызывать после выполнения запроса (туда будет передан результат)
-            dataType: "json" // в каком формате получаем ответ от auth server
+            url: BFF_URI + "/token",
+            data: authCode, // передаем только код, остальные параметры будут заполняться на самом BFF
+            success: bffTokenResponse // (callback) какой метод вызывать после успешного выполнения запроса
         });
     } else {
         initAccessToken(); // если ошибка - заново отправляем для ввода логин-пароль
     }
 }
 
+// успешный ответ от BFF, значит токены сохранены в куках
+function bffTokenResponse(data, status, jqXHR) {
 
-// получить access token
-function accessTokenResponse(data, status, jqXHR) { // // эти параметры передаются автоматически, data будет в формате JSON
+    // флаг, что в куках есть refresh token и его можно обменивать потом на новые access token
+    localStorage.setItem(USE_REFRESH_KEY, "true");
 
-    // очищаем временно сохраненные значения
-    localStorage.removeItem(STATE_KEY);
-    localStorage.removeItem(CODE_VERIFIER_KEY);
-
-    // сохраняем в глоб. переменную (сбросится только после перезагрузки страницы)
-    accessToken = data["access_token"];
-    refreshToken = data["refresh_token"];
-    idToken = data["id_token"];
-
-    console.log("access_token = " + accessToken);
-    console.log("refresh_token = " + refreshToken);
-    console.log("id_token = " + idToken);
-
-
-    var payload = getJsonPayload(idToken);
-    // document.getElementById("email").innerHTML = "Привет: " + payload["email"];
-    document.getElementById("name").innerHTML = "Привет: " + payload["name"];
-
-
-    // локальное хранилище браузера позволяет сохранить значение, чтобы использовать его даже после перезагрузки страницы
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-    localStorage.setItem(ID_TOKEN_KEY, idToken);
-
-
-    // получить данные из Resource Server, автоматически сразу после получения access token
+    // получаем данные с API Resrouce Server
     getDataFromResourceServer();
-
 }
 
-
-// получить данные из Resource Server, добавив в запрос access token
+// получить данные из Resource Server не напрямую, а через BFF, который прикрепит токены из куков и перенаправит запросы в Resource Server
+// браузер отправит в запрос куки с токенами автоматически
 function getDataFromResourceServer() {
-
-    // ajax запрос (параллельный вызов)
     $.ajax({
-        beforeSend: function (request) { // обязательные заголовки
-            request.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
-            request.setRequestHeader("Authorization", "Bearer " + accessToken); // задаем Bearer c access token, чтобы Resource Server не отклонил запрос
-        },
         type: "GET", // тип запроса (обязательно должен быть get)
-        url: RESOURCE_SERVER_URL + "/admin/data", // адрес, куда отправляем запрос
+        url: BFF_URI + "/data", // адрес, куда отправляем запрос
         success: resourceServerResponse, // метод для выполнения, если запрос сработает успешно (callback)
         error: resourceServerError, // если запрос завершился ошибкой, вызываем другую функцию
         dataType: "text" // в каком формате ожидаем ответ от auth server (в нашем случае это обычный текст - для упрощения, но чаще всего это JSON)
@@ -264,112 +182,80 @@ function resourceServerResponse(data, status, jqXHR) { // эти парамет�
 
 }
 
-
 // обработка ошибки от resource server (callback)
 function resourceServerError(request, status, error) {
 
-    // сам json
-    var json = JSON.parse(request.responseText); // JSON.parse преобразовывает из текста в объект JSON
+    try {
 
-    // можно получить из json любое значение
-    var errorType = json["type"];
+        // сам json
+        var json = JSON.parse(request.responseText); // JSON.parse преобразовывает из текста в объект JSON
 
-    console.log(errorType);
+        // можно получить из json любое значение
+        var errorType = json["type"];
 
-    // пытаемся сначала получить refresh token из localStorage
-    refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+        console.log(errorType);
 
-    // если есть refresh token
-    if (refreshToken) {
-        // получаем новый access token с помощью него (т.е.не запускаем полный цикл PKCE, где пользователю нужно вводить логин-пароль)
-        exchangeRefreshToAccessToken();
+        // пытаемся сначала получить refresh token из localStorage
+        refreshTokenCookieExists = localStorage.getItem(USE_REFRESH_KEY);
 
-    } else { // если нету refresh token - запускаем полный цикл PKCE с вводом логина-пароля
-        initAccessToken(); // минус этого решения - нужно будет заново вводить логин-пароль
+        // если есть кук refresh token
+        if (refreshTokenCookieExists) {
+            // получаем новый access token с помощью него (т.е.не запускаем полный цикл PKCE, где пользователю нужно вводить логин-пароль)
+            exchangeRefreshToAccessToken();
+
+        } else { // если нет кука refresh token - запускаем полный цикл PKCE с вводом логина-пароля
+            initAccessToken(); // минус этого решения - нужно будет заново вводить логин-пароль
+        }
+    } catch (exception) {
+        console.trace();
     }
 
 }
 
-// запрос на новый access token используя refresh token
-// в ответе будет как новый AT, так и новый RT
+// получение нового access token, с помощью BFF и кука с текущим Refresh Token
+// в ответе от BFF - новые токены сохранятся в куках и будут использоваться для будущих запросов
 function exchangeRefreshToAccessToken() {
 
     console.log("new access token initiated");
 
-// набор параметров для правильного обращения к auth server
-    var data = {
-        "grant_type": GRANT_TYPE_REFRESH_TOKEN, // уведомляем auth server, что мы хотим получить новый access token, используя refresh token
-        "client_id": CLIENT_ID, // берем из KeyCloak
-        "refresh_token": refreshToken // текущий refresh token
-    };
-
-    $.ajax({ // ajax запрос для параллельного вызова
-        beforeSend: function (request) { // обязательные заголовки
-            request.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
-        },
-        type: "POST", // тип запроса обязательно должен быть POST
-        url: KEYCLOAK_URI + "/token", // адрес обращения
-        data: data, // параметры запроса
-        success: accessTokenResponse, // (callback) какой метод вызывать после выполнения запроса (туда будет передан результат)
-        error: exchangeRefreshError,
-        dataType: "json" // в каком формате получаем ответ от auth server
+    $.ajax({
+        type: "GET",
+        url: BFF_URI + "/newaccesstoken",
+        success: bffTokenResponse, // (callback) какой метод вызывать после выполнения запроса (туда будет передан результат)
+        error: exchangeRefreshError
     });
 }
 
-// в случае ошибки при обмене RT на AT - просто заново просим пользоваля авторизоваться, чтобы получить новые значения
+// в случае ошибки при обмене RT на AT - просто заново просим пользователя авторизоваться, чтобы получить новые значения
 function exchangeRefreshError(request, status, error) {
-    logout();
+    logout(); // выход из системы
 }
 
 
-// войти в систему - получить access token одним из способов
-function login() {
-    if (refreshToken) {
-        exchangeRefreshToAccessToken();  // получить новые токены без ввода логина-пароля
-    } else {
-        initAccessToken(); // получить новые токены с вводом логина-пароля
-    }
-
-    getDataFromResourceServer();
-}
-
-
-// выйти из системы - удалить все токены
+// выйти из системы - удалить все токены и сессии в KeyCloak
 function logout() {
 
-    var idToken = localStorage.getItem(ID_TOKEN_KEY);
+    // обнуление
+    localStorage.removeItem(USE_REFRESH_KEY);
+    localStorage.removeItem(STATE_KEY);
+
+    accessToken = "";
+    refreshTokenCookieExists = "";
 
     console.log("logout");
 
-    // в каждой версии KeyCloak может изменяться URL - поэтому нужно сверяться с документацией
-    var authUrl = KEYCLOAK_URI + "/logout";
-
-    authUrl += "?post_logout_redirect_uri=" + CLIENT_ROOT_URL; // уведомляем auth server, что мы хотим получить новый access token, используя refresh token
-    authUrl += "&id_token_hint=" + idToken; // данные о пользователе
-    authUrl += "&client_id=" + CLIENT_ID; // название клиента из KeyCloak
-
-
-    // открываем окно для авторизации в этом же окне (self)
-    window.open(authUrl, '_self');
-
-
-    // очищаем все старые значения
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(ID_TOKEN_KEY);
-
-    accessToken = "";
-    refreshToken = "";
-
+    // Вызываем запрос в BFF, который обнулит все сессии в KeyCloak и занулит все куки в браузере
+    // Никакие параметры не передаем, т.к. требуемый для выхода ID Token считается на сервере из кука
+    // Остальные параметры сохранены на самом сервере
+    $.ajax({
+        type: "GET",
+        url: BFF_URI + "/logout",
+        success: logoutRedirect
+    });
 }
 
-// функция взята отсюда
-// https://stackoverflow.com/questions/38552003/how-to-decode-jwt-token-in-javascript-without-using-a-library
-function getJsonPayload (token) {
-    var base64Url = token.split('.')[1];
-    var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
+function logoutRedirect(request, status, error) {
+    // после выполнения logout - при попытке перейти на главную страницу - отобразится окно логина-пароля, т.к. у нас нет access token, чтобы выполнять запрос в resource server
+    window.location.href = "/";
 
-    return JSON.parse(jsonPayload); // сразу получаем payload, где находятся все бизнес-данные
-};
+}
