@@ -32,5 +32,15 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server' // все классы для работы с OAuth2
 
 
+	// lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// можно использовать API для работы с KeyCloak. Это позволит уменьшить код и самому вручную не создавать объекты для запросов в KC
+	// версию библиотеки выбираете такую же, что и установленный KС (не ниже, не выше)
+//	implementation 'org.keycloak:keycloak-spring-boot-starter:18.0.2'
+//	implementation 'org.keycloak:keycloak-admin-client:18.0.2'
+
 }
 
