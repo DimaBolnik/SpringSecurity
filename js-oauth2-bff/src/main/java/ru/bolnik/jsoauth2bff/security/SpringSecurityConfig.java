@@ -42,7 +42,7 @@ public class SpringSecurityConfig {
                 .csrf().disable() // отключаем встроенную защиту от CSRF атак, т.к. используем свою, из OAUTH2
                 .cors();// разрешает выполнять OPTIONS запросы от клиента (preflight запросы) без авторизации
 
-        http.requiresChannel().anyRequest().requiresSecure(); // обязательное исп. HTTPS для всех запросах
+//        http.requiresChannel().anyRequest().requiresSecure(); // обязательное исп. HTTPS для всех запросах
 
         // отключаем создание куков для сессии
         http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);

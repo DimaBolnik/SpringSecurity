@@ -10,12 +10,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import ru.bolnik.oauth2.backend.security.exception.OAuth2ExceptionHandler;
+import ru.bolnik.oauth2.backend.exception.OAuth2ExceptionHandler;
 import ru.bolnik.oauth2.backend.utils.KCRoleConverter;
 
 import java.util.Arrays;
@@ -31,6 +32,7 @@ public class SpringSecurityConfig {
 
     @Value("${client.url}")
     private String clientURL; // клиентский URL
+
 
     // создается спец. бин, который отвечает за настройки запросов по http (метод вызывается автоматически) Spring контейнером
     @Bean
@@ -51,23 +53,30 @@ public class SpringSecurityConfig {
 
                 .csrf().disable() // отключаем встроенную защиту от CSRF атак, т.к. используем свою, из OAUTH2
                 .cors()// разрешает выполнять OPTIONS запросы от клиента (preflight запросы) без авторизации
-                .and()
-
 
                 // добавляем новые настройки, не связанные с предыдущими
 
-                .oauth2ResourceServer() // включаем защиту OAuth2 для данного backend
+                .and().oauth2ResourceServer() // включаем защиту OAuth2 для данного backend
                 .jwt()
+
                 .jwtAuthenticationConverter(jwtAuthenticationConverter) // добавляем конвертер ролей из JWT в Authority (Role)
 
                 .and()
 
+                // важно добавлять этот класс после jwt (не раньше), чтобы он применился именно к библиотеке oauth2
                 .authenticationEntryPoint(new OAuth2ExceptionHandler());
+
+
+//        http.requiresChannel().anyRequest().requiresSecure(); // обязательное исп. HTTPS для всех запросах
+
+        http.sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 
         return http.build();
     }
 
 
+    // все эти настройки обязательны для корректного сохранения куков в браузере
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
@@ -78,6 +87,5 @@ public class SpringSecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-
 
 }
