@@ -27,3 +27,10 @@ h1 {
 .menu__link {
     color: indigo;
 }
+
+.form-hint {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
