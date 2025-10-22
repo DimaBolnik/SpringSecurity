@@ -34,3 +34,10 @@ h1 {
     font-weight: 700;
     margin-bottom: 12px;
 }
+.field23 {
+    min-width: 300px;
+    max-width: 300px;
+    min-height: 300px;
+    max-height: 300px;
+    cursor: crosshair;
+}
