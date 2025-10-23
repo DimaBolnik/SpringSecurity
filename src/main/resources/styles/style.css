@@ -42,11 +42,41 @@ h1 {
     cursor: crosshair;
 }
 
-.welcome{
-    background-image: url("https://www.cats.org.uk/media/13136/220325case013.jpg?width=500&height=333.49609375");
-    background-repeat: no-repeat;
-    background-position: center center;
-    height: 300px;
+.popup {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+}
 
+.popup-content {
+    background: white;
+    padding: 20px 30px;
+    border-radius: 15px;
+    position: relative;
+    max-width: 300px;
     text-align: center;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    font-family: sans-serif;
+}
+
+.close-btn {
+    position: absolute;
+    top: 8px;
+    right: 15px;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.close-btn:hover {
+    color: #000;
+}
+
+/* Когда чекбокс активен — скрываем окно */
+#close:checked + .popup {
+    display: none;
 }
