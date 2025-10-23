@@ -41,3 +41,12 @@ h1 {
     max-height: 300px;
     cursor: crosshair;
 }
+
+.welcome{
+    background-image: url("https://www.cats.org.uk/media/13136/220325case013.jpg?width=500&height=333.49609375");
+    background-repeat: no-repeat;
+    background-position: center center;
+    height: 300px;
+
+    text-align: center;
+}
